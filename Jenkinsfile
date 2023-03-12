@@ -36,7 +36,7 @@ podTemplate(yaml: '''
             items:
             - key: .dockerconfigjson
               path: config.json
-''') {
+''')  {
   node(POD_LABEL) {
     stage('Build a gradle project') {
       git 'https://github.com/StrayCat96/Continuous-Delivery-with-Docker-and-Jenkins-Second-Edition.git'
@@ -48,101 +48,6 @@ podTemplate(yaml: '''
           ./gradlew build
           mv ./build/libs/calculator-0.0.1-SNAPSHOT.jar /mnt
           '''
-            
-            
-            stage("Unit test") {
-            
-        if (env.BRANCH_NAME == "master")
-            {
-           echo "I am the ${env.BRANCH_NAME} branch"
-                   try {
-                      sh '''
-                      pwd
-                      cd Chapter08/sample1
-                      chmod +x gradlew
-                      ./gradlew test
-                       '''
-              }
-
-             catch (Exception E) {
-               echo 'Failure detected'
-           }
-             }
-        else if (env.BRANCH_NAME == "feature") {
-           echo "I am the ${env.BRANCH_NAME} branch"
-                   try {
-                      sh '''
-                      pwd
-                      cd Chapter08/sample1
-                      chmod +x gradlew
-                      ./gradlew test
-                       '''
-             }   
-           
-                  catch (Exception E) {
-                  echo 'Failure detected'
-               }
-             }
-           else {
-           echo "I am the ${env.BRANCH_NAME} branch, I am jumping Unit test stage"
-         }
-        }
-        stage("Code coverage") {
-            echo "I am the ${env.BRANCH_NAME} branch"
-        if  (env.BRANCH_NAME == "master")
-            {
-                    try {
-                      sh '''
-                        pwd
-                        cd Chapter08/sample1
-                         chmod +x gradlew
-                         ./gradlew jacocoTestCoverageVerification
-                         ./gradlew jacocoTestReport '''
-                       } 
-          
-             catch (Exception E) {
-                        echo 'Failure detected'
-                      }
-             }
-        }
-
-
-        stage("Code checkstyle") {
-           echo "I am the ${env.BRANCH_NAME} branch"
-       if (env.BRANCH_NAME == "master") {
-               try {
-                 sh '''
-                 pwd
-                 cd Chapter08/sample1
-                 chmod +x gradlew
-                 ./gradlew checkstyleMain
-                 ./gradlew jacocoTestReport '''
-            }   
-           
-                catch (Exception E) {
-                  echo 'Failure detected'
-               }
-       }
-       else if (env.BRANCH_NAME == "feature") {
-               try {
-                 sh '''
-                 pwd
-                 cd Chapter08/sample1
-                 chmod +x gradlew
-                 ./gradlew checkstyleMain
-                 ./gradlew jacocoTestReport '''
-            }   
-           
-                catch (Exception E) {
-                  echo 'Failure detected'
-                }
-         }
-       else {
-        echo "I am the ${env.BRANCH_NAME} branch, I am jumping Code checkstyle stage"
-        }
-     }          
-
-} 
         }
       }
     }
@@ -159,5 +64,52 @@ podTemplate(yaml: '''
           '''
         }
       }
+    }
+
+  }
+}
+
+
+{
+
+    node(POD_LABEL) {
+        stage('Run pipeline against a gradle project') {
+            // "container" Selects a container of the agent pod so that all shell steps are executed in that container.
+            container('gradle') {
+                stage('Build a gradle project') {
+                    // from the git plugin
+                    // https://www.jenkins.io/doc/pipeline/steps/git/
+                    git 'https://github.com/StrayCat96/Continuous-Delivery-with-Docker-and-Jenkins-Second-Edition.git'
+                    sh '''
+                    echo "My CC branch is: ${env.CHANGE_BRANCH}"
+                    if (env.BRANCH_NAME == "feature") {
+                    cd Chapter08/sample1
+                    chmod +x gradlew
+                    ./gradlew test
+                    '''
+                }
+            }
+                stage("Code coverage") {
+                    try {
+                        sh '''
+        	            pwd
+               		    cd Chapter08/sample1
+                	    ./gradlew jacocoTestCoverageVerification
+                        ./gradlew jacocoTestReport
+                        '''
+                    } catch (Exception E) {
+                        echo 'Failure detected'
+                    }
+
+                    // from the HTML publisher plugin
+                    // https://www.jenkins.io/doc/pipeline/steps/htmlpublisher/
+                    publishHTML (target: [
+                        reportDir: 'Chapter08/sample1/build/reports/tests/test',
+                        reportFiles: 'index.html',
+                        reportName: "JaCoCo Report"
+                    ])                       
+                }
+           }
+        }
     }
 }
