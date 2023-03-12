@@ -81,8 +81,6 @@ podTemplate(yaml: '''
                     // https://www.jenkins.io/doc/pipeline/steps/git/
                     git 'https://github.com/StrayCat96/Continuous-Delivery-with-Docker-and-Jenkins-Second-Edition.git'
                     sh '''
-                    echo "My CC branch is: ${env.CHANGE_BRANCH}"
-                    if (env.BRANCH_NAME == "feature") {
                     cd Chapter08/sample1
                     chmod +x gradlew
                     ./gradlew test
@@ -90,6 +88,9 @@ podTemplate(yaml: '''
                 }
             }
                 stage("Code coverage") {
+                    when {
+                        env.BRANCH_NAME != "feature"
+                    }
                     try {
                         sh '''
         	            pwd
